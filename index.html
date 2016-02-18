@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+    <head>
+	<title>Mandelbrot Set Explorer</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" type="text/css" href="style.css">
+	<link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+	<script src="http://code.jquery.com/jquery-1.10.2.js" ></script>
+	<script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+	<script src="script/setting.js"></script>	
+	<script src="script/geom.js"></script>
+	<script src="script/chunk.js"></script>
+	<script src="script/rendering/maldebrot_renderer.js"></script>
+	<script src="plane.js"></script>	
+	<script src="script/settings_dialog.js"></script>
+    </head>
+    <body onload='plane.init("draw_canvas", "stats_canvas", "overlay_canvas")' oncontextmenu="return false;">
+	<canvas id="draw_canvas"></canvas>
+        <canvas id="overlay_canvas"></canvas>
+	<canvas id="stats_canvas"></canvas>	
+    </body>
+</html>
