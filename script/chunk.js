@@ -5,28 +5,28 @@ var chunk = (function () {
 
     function Chunk_Manager(renderer) {
 	this.renderer = renderer;
-        this.max_size = 200;
+        this.max_size = 300;
         this.clean_size = 40;
-	this.chunk_buffer = new Map();
+	this.chunk_cache = new Map();
 
 	this.get_chunk = function (chunkRect) {
             var key = "" + chunkRect.x + ":" + chunkRect.y;
-            if (this.chunk_buffer.has(key)) 
-                return this.chunk_buffer.get(key);
+            if (this.chunk_cache.has(key)) 
+                return this.chunk_cache.get(key);
 
 	    var new_chunk = this.renderer.render_chunk(chunkRect);
-            this.chunk_buffer.set(key, new_chunk);
-            if (this.chunk_buffer.size > this.max_size)
+            this.chunk_cache.set(key, new_chunk);
+            if (this.chunk_cache.size > this.max_size)
                 for (var i = 0; i < this.clean_size; i++) {
-                    var it = this.chunk_buffer.keys();
-                    this.chunk_buffer.delete(it.next().value);                    
+                    var it = this.chunk_cache.keys();
+                    this.chunk_cache.delete(it.next().value);                    
                 }
             
 	    return new_chunk;
 	};
 
 	this.clear = function () {
-            this.chunk_buffer.clear();
+            this.chunk_cache.clear();
 	};
     }
 

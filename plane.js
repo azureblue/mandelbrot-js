@@ -175,7 +175,7 @@
         if (cd_timeout) {
             clearTimeout(cd_timeout);
         }
-        cd_timeout = setTimeout(redraw, 400);
+        cd_timeout = setTimeout(redraw, 200);
     }
 
     function handle_mouse_down(event) {
