@@ -26,7 +26,7 @@ geom = (function() {
     };
 
     Vec2.from_event = function(event) {
-	return new Vec2(event.originalEvent.offsetX, event.originalEvent.offsetY);
+	return new Vec2(event.offsetX, event.offsetY);
     };
     
     function Rect(x, y, width, height) {

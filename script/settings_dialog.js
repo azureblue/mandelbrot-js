@@ -5,15 +5,20 @@ $(function () {
     var settings = [].concat(plane.list_settings(), renderer.list_settings());
 
     var create_form = function () {
-
+        
 	var html = [];
         html.push(
                 '<div id="dialog-form" title="Settings"> \
                     <form onsubmit="function(event) {event.preventDefault();}"> \
-                        <fieldset>'
-                );
-
-	for (var i = 0; i < settings.length; i++) {
+                        <fieldset> \
+                <div id="setting-tabs"> \
+                    <ul> \
+                      <li><a href="#settings-plane">Basic</a></li> \
+                      <li><a href="#settings-renderer">Advanced</a></li> \
+                    </ul> ');
+        
+         html.push('<div id="settings-plane">');
+         for (var i = 0; i < settings.length; i++) {
 	    html.push("<label>" + settings[i].get_description() + '</label>');
 	    html.push('<input type="number" name="' + settings[i].get_name() 
                     + '" value="' + settings[i].get_setting() 
@@ -21,6 +26,8 @@ $(function () {
                     + '" step="' + settings[i].get_step() 
                     + '" class="text ui-widget-content ui-corner-all">');
 	}
+        html.push('</div>');
+        html.push('</div>');
 
 	html.push('<input type="submit" tabindex="-1" style="position:absolute; top:-1000px"> \
 		</fieldset> \
@@ -29,6 +36,7 @@ $(function () {
         
 	return html.join("");
     };
+    
     function create_dialog() {
 	var dialog =  $(create_form(renderer)).dialog({
 	    autoOpen: false,
@@ -51,6 +59,10 @@ $(function () {
 		    dialog.dialog("destroy");
 		}
 	    },
+            open: function() {
+                $('#setting-tabs').tabs();
+            },
+            
 	    close: function () {
 		plane.start_drawing();
 		dialog.dialog("destroy");

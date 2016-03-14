@@ -48,7 +48,7 @@
                     data[idx + 0] = color; //Math.round(r * 255);
                     data[idx + 1] = color; //Math.round(g * 255);
                     data[idx + 2] = color; //Math.round(b * 255);
-                    data[idx + 3] = 254;
+                    data[idx + 3] = 255;
                 }
 
             return new Chunk(chunk_rect, data);

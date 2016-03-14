@@ -15,9 +15,10 @@
 	<script src="plane.js"></script>	
 	<script src="script/settings_dialog.js"></script>
     </head>
-    <body onload='plane.init("draw_canvas", "stats_canvas", "overlay_canvas")' oncontextmenu="return false;">
+    <body onload='plane.init("draw_canvas", "stats_canvas", "stats_bottom_canvas", "overlay_canvas")' oncontextmenu="return false;">
+	<canvas id="stats_canvas"></canvas>
 	<canvas id="draw_canvas"></canvas>
+        <canvas id="stats_bottom_canvas"></canvas>
         <canvas id="overlay_canvas"></canvas>
-	<canvas id="stats_canvas"></canvas>	
     </body>
 </html>

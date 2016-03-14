@@ -1,4 +1,3 @@
-
 (function (plane) {
     var Vec2 = geom.Vec2;
 
@@ -6,7 +5,8 @@
     var Chunk_Manager = chunk.Chunk_Manager;
     var Chunk_Rect = chunk.Chunk_Rect;
 
-    var draw_canvas, stats_canvas, overlay_canvas, draw_context, stats_context, overlay_context;
+    var draw_canvas, stats_canvas, stats_bottom_canvas, overlay_canvas,
+            draw_context, stats_context, stats_bottom_context, overlay_context;
 
     var width, height;
 
@@ -16,7 +16,7 @@
 
     var
             chunk_size = 200,
-            preview_freq = 5,
+            preview_freq = 20,
             preview = undefined;
 
     var mouse_down_point, mouse_move_point;
@@ -25,7 +25,8 @@
     var renderer = new Mandelbrot(300, 2, Math.pow(1.2, scalen));
     var chunk_manager = new Chunk_Manager(renderer);
 
-    var dragging = false, draw = false;
+    var dragging = false,
+            draw = false;
     var draw_async_timeout_handle;
 
     function Preview(data, width, height) {
@@ -47,7 +48,8 @@
     Preview.prototype = Object.create(Vec2.prototype);
 
     Preview.create_preview = function (context2d, width, height) {
-        return new Preview(new Uint8ClampedArray(context2d.getImageData(0, 0, width, height).data), width, height);
+        return new Preview(new Uint8ClampedArray(context2d.getImageData(0, 0,
+                width, height).data), width, height);
     };
 
     function redraw() {
@@ -56,28 +58,71 @@
 
         draw_stats();
 
+        schedule_spirally();
+        start_drawing();
+    }
+
+    function schedule_spirally() {
         var xoffset = offset.x;
         var yoffset = offset.y;
         var mod_xalign = xoffset % chunk_size;
         var mod_yalign = yoffset % chunk_size;
-            
+
         var xalign = mod_xalign >= 0 ? mod_xalign : chunk_size + mod_xalign;
         var yalign = mod_yalign >= 0 ? mod_yalign : chunk_size + mod_yalign;
 
-        for (var i = -yalign; i < height; i = i + chunk_size)
-            for (var j = -xalign; j < width; j = j + chunk_size)
-                schedule_chunk(j, i, j + offset.x, -i + -offset.y, chunk_size, chunk_size);
+        var width_in_chunks = Math.floor((xalign + width + chunk_size - 1) /
+                chunk_size);
+        var height_in_chunks = Math.floor((yalign + height + chunk_size - 1) /
+                chunk_size);
 
-        start_drawing();
+        var start_x = Math.floor((Math.floor((width - 1) / 2) + xalign) /
+                chunk_size);
+
+        var start_y = Math.floor((Math.floor((height - 1) / 2) + yalign) /
+                chunk_size);
+
+        var current_pos = new Vec2(start_x, start_y);
+
+        var chunks_left = width_in_chunks * height_in_chunks;
+
+        var sch_inner_chunk = function () {
+            if (current_pos.x >= 0 && current_pos.x < width_in_chunks &&
+                    current_pos.y >= 0 && current_pos.y < height_in_chunks) {
+                schedule_chunk(-xalign + current_pos.x * chunk_size, -yalign +
+                        current_pos.y * chunk_size, chunk_size, chunk_size);
+                chunks_left--;
+            }
+        };
+
+        var delta = 0;
+
+        sch_inner_chunk();
+
+        while (chunks_left > 0) {
+            for (var i = (delta++, 0); i < delta; i++, current_pos.x += 1)
+                sch_inner_chunk();
+
+            for (var i = 0; i < delta; i++, current_pos.y += 1)
+                sch_inner_chunk();
+
+            for (var i = (delta++, 0), i = 0; i < delta; i++, current_pos.x -= 1)
+                sch_inner_chunk();
+
+            for (var i = 0; i < delta; i++, current_pos.y -= 1)
+                sch_inner_chunk();
+        }
+        
     }
 
-    function schedule_chunk(x, y, rx, ry, w, h) {
-        chunk_queue.push(new Chunk_Rect(new Vec2(rx, ry), new Vec2(x, y), w, h));
+    function schedule_chunk(x, y, w, h) {
+        chunk_queue.push(new Chunk_Rect(new Vec2(x + offset.x, -y - offset.y),
+                new Vec2(x, y), w, h));
     }
 
     function draw_next_chunk() {
         if (chunk_queue.length > 0 && draw) {
-            var chunkRect = chunk_queue.pop();
+            var chunkRect = chunk_queue.shift();
             draw_chunk(chunkRect);
 
             if (chunk_queue.length % preview_freq === 0)
@@ -116,7 +161,6 @@
 
         var chunk = chunk_manager.get_chunk(chunkRect);
         id.data.set(chunk.data);
-
         draw_context.putImageData(id, chunkRect.screen_position.x, chunkRect.screen_position.y);
     }
 
@@ -138,7 +182,7 @@
         if (event.button === 2)
             return;
 
-        stop_drawing();        
+        stop_drawing();
         preview = Preview.create_preview(draw_context, width, height);
         mouse_down_point = Vec2.from_event(event);
         mouse_move_point = Vec2.from_event(event);
@@ -148,7 +192,7 @@
 
     function handle_mouse_up(event) {
         dragging = false;
-        if (mouse_down_point.same_position(Vec2.from_event(event))) {                        
+        if (mouse_down_point.same_position(Vec2.from_event(event))) {
             offset.move(new Vec2(width / 2, height / 2).vector_to(mouse_down_point));
             redraw();
         }
@@ -175,10 +219,10 @@
     }
 
     function handle_mouse_wheel(event) {
-        var xo = event.originalEvent.offsetX + offset.x;
-        var yo = event.originalEvent.offsetY + offset.y;
+        var xo = event.offsetX + offset.x;
+        var yo = event.offsetY + offset.y;
         preview = undefined;
-        plane.set_scale_n(scalen + (((event.originalEvent.wheelDelta ? event.originalEvent.wheelDelta : -event.originalEvent.detail) > 0) ? 1 : -1), xo, yo);
+        plane.set_scale_n(scalen + (((event.wheelDelta ? event.wheelDelta : -event.detail) > 0) ? 2 : -2), xo, yo);
     }
 
     plane.set_scale_n = function (nscale, xo, yo) {
@@ -196,62 +240,78 @@
         redraw();
     };
 
-    plane.init = function (main, top, overlay) {
+    plane.init = function (main, top, stats_bottom, overlay) {
         draw_canvas = document.getElementById(main);
-        stats_canvas = document.getElementById(top);  
-        overlay_canvas = document.getElementById(overlay);  
-        
+        stats_canvas = document.getElementById(top);
+        stats_bottom_canvas = document.getElementById(stats_bottom);
+        overlay_canvas = document.getElementById(overlay);
+
         draw_canvas.width = draw_canvas.clientWidth;
         draw_canvas.height = draw_canvas.clientHeight;
         stats_canvas.width = stats_canvas.clientWidth;
         stats_canvas.height = stats_canvas.clientHeight;
+        stats_bottom_canvas.width = stats_bottom_canvas.clientWidth;
+        stats_bottom_canvas.height = stats_bottom_canvas.clientHeight;
         overlay_canvas.width = overlay_canvas.clientWidth;
         overlay_canvas.height = overlay_canvas.clientHeight;
-        
+
         width = draw_canvas.width;
         height = draw_canvas.height;
+
         offset.x = Math.round(-width / 2);
         offset.y = Math.round(-height / 2);
-        
+
         draw_context = draw_canvas.getContext('2d');
-        stats_context = stats_canvas.getContext('2d');        
+        stats_context = stats_canvas.getContext('2d');
+        stats_bottom_context = stats_bottom_canvas.getContext('2d');
         overlay_context = overlay_canvas.getContext('2d');
 
         stats_context.font = "14px monospace";
+        stats_bottom_context.font = "14px monospace";
 
-        $('#' + overlay).bind("mousewheel DOMMouseScroll", handle_mouse_wheel);
-        $('#' + overlay).mousedown(handle_mouse_down);
-        $('#' + overlay).mouseup(handle_mouse_up);
-        $('#' + overlay).mousemove(handle_mouse_move);
-        
+        overlay_canvas.addEventListener("mousemove", handle_mouse_move);
+        overlay_canvas.addEventListener("mousedown", handle_mouse_down);
+        overlay_canvas.addEventListener("mouseup", handle_mouse_up);
+        overlay_canvas.addEventListener("mousewheel", handle_mouse_wheel);
+        overlay_canvas.addEventListener("DOMMouseScroll", handle_mouse_wheel);
+
         overlay_context.strokeStyle = "rgba(0, 0, 200, 0.3)";
-        overlay_context.lineWidth=2;
+        overlay_context.lineWidth = 2;
         overlay_context.beginPath();
         overlay_context.moveTo(width / 2, 20);
         overlay_context.lineTo(width / 2, height);
         overlay_context.stroke();
-        
+
         overlay_context.beginPath();
         overlay_context.moveTo(0, height / 2);
         overlay_context.lineTo(width, height / 2);
         overlay_context.stroke();
-        
+
         redraw();
     };
 
     function draw_stats() {
+
         stats_context.fillStyle = "rgb(122, 122, 122)";
         stats_context.fillRect(0, 0, 2000, 800);
         stats_context.fillStyle = "rgba(255, 255, 255, 0.7)";
-        stats_context.fillText("MANDELBROT SET EXPLORER  |  ITERATIONS: " + renderer.iters +
-                "  |  SCALE: " + renderer.scale.toPrecision(10) + "  |  X: " + (offset.x +
-                width / 2) / renderer.scale + "  |  Y: " + (offset.y + height / 2) / renderer.scale,
+        stats_context.fillText(
+                "MANDELBROT SET EXPLORER  |  ITERATIONS: "
+                + renderer.iters + " | SCALE: " + renderer.scale.toPrecision(10) + " | X: "
+                + (offset.x + width / 2) / renderer.scale + "  |  Y: "
+                + (offset.y + height / 2) / renderer.scale,
                 10, 14);
 
+
+        stats_bottom_context.clearRect(0, 0, 800, 25);
         if (chunk_queue.length > 0 && draw) {
-            stats_context.fillStyle = "rgba(255, 255, 255, 0.7)";
-            stats_context.fillText("RENDERING: " + chunk_queue.length + " chunks to process",
-                    width - 300, 14);
+            var text = "RENDERING: " + chunk_queue.length + " chunks to process";
+            var metrics = stats_bottom_context.measureText(text);
+            var text_width = metrics.width;
+            stats_bottom_context.fillStyle = "rgb(122, 122, 122)";
+            stats_bottom_context.fillRect(0, 0, text_width + 20, 25);
+            stats_bottom_context.fillStyle = "rgba(255, 255, 255, 0.7)";
+            stats_bottom_context.fillText(text, 10, 14);
         }
     }
 

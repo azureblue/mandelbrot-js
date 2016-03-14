@@ -21,6 +21,7 @@ var chunk = (function () {
                     var it = this.chunk_buffer.keys();
                     this.chunk_buffer.delete(it.next().value);                    
                 }
+            
 	    return new_chunk;
 	};
 
