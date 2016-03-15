@@ -190,7 +190,10 @@
         dragging = true;
     }
 
-    function handle_mouse_up(event) {
+    function handle_mouse_drag_stop(event) {
+        if (!dragging) 
+            return;
+        
         dragging = false;
         if (mouse_down_point.same_position(Vec2.from_event(event))) {
             offset.move(new Vec2(width / 2, height / 2).vector_to(mouse_down_point));
@@ -271,7 +274,8 @@
 
         overlay_canvas.addEventListener("mousemove", handle_mouse_move);
         overlay_canvas.addEventListener("mousedown", handle_mouse_down);
-        overlay_canvas.addEventListener("mouseup", handle_mouse_up);
+        overlay_canvas.addEventListener("mouseup", handle_mouse_drag_stop);
+        overlay_canvas.addEventListener("mouseout", handle_mouse_drag_stop);
         overlay_canvas.addEventListener("mousewheel", handle_mouse_wheel);
         overlay_canvas.addEventListener("DOMMouseScroll", handle_mouse_wheel);
 
