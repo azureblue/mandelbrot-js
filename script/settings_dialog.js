@@ -19,7 +19,7 @@ $(function () {
         
          html.push('<div id="settings-plane">');
          for (var i = 0; i < settings.length; i++) {
-	    html.push("<label>" + settings[i].get_description() + '</label>');
+	    html.push("<label>" + settings[i].get_desc() + '</label>');
 	    html.push('<input type="number" name="' + settings[i].get_name() 
                     + '" value="' + settings[i].get_setting() 
                     + '" id="id_' + settings[i].get_name() 

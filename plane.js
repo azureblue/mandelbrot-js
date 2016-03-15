@@ -345,11 +345,7 @@
 
     plane.list_settings = function () {
         return [
-            new Setting('scale', 'Scale (1.2<sup>n</sup>)', 'number', function () {
-                return plane.get_scale_n();
-            }, function (x) {
-                plane.set_scale_n(x);
-            }, Setting.map_to_int(), 1)
+            new Setting('scale', 'Scale (1.2<sup>n</sup>)', 'number', plane.get_scale_n, plane.set_scale_n, Setting.map_to_int, 1)
         ];
     };
 

@@ -1,40 +1,19 @@
-function Setting(name, description, type, get, set, mapping_function, step) {
+function Setting(name, description, type, get_function, set_function, map_function, step) {
     var name = name;
-    var description = description;
+    var desc = description;
     var type = type;
-    var get = get;
-    var set = set;
-    var map = mapping_function !== undefined ? mapping_function : function(x) {return x;};
+    var get = get_function;
+    var set = set_function;
+    var map = map_function !== undefined ? map_function : x => x;
     var step = step;
     
-    this.get_name = function() { return name;};
-    this.get_description = function() { return description;};
-    this.get_type = function() { return type;};
-    this.get_step = function() { return step;};
-    
-    this.get_setting = function() {
-        return get();
-//	if (obj['get_' + name] !== undefined) return obj['get_' + name]();
-//	if (obj[name] !== undefined) return obj[name];
-//	console.log('Invalid setting: ' + name + ' for object: ' + obj);
-    };
-    
-    this.set_setting = function(value) {
-        set(map(value));
-//	if (obj['set_' + name] !== undefined) {obj['set_' + name](map(value)); return;}
-//	if (obj[name] !== undefined) {obj[name] = map(value); return;};
-//	console.log('Invalid setting: ' + name + ' for object: ' + obj);
-    };
+    this.get_name = () => name;
+    this.get_desc = () => desc;
+    this.get_type = () => type;
+    this.get_step = () => step;    
+    this.get_setting = () => get();    
+    this.set_setting = (value) => set(map(value));
 }
 
-Setting.map_to_float = function() {
-    return function(x) {
-	return parseFloat(x);
-    };
-};
-
-Setting.map_to_int = function() {
-    return function(x) {
-	return parseInt(x);
-    };
-};
+Setting.map_to_float = (x) => parseFloat(x);
+Setting.map_to_int = (x) => parseInt(x);

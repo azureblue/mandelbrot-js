@@ -58,8 +58,8 @@
         
         this.list_settings = function () {
             return [
-                new Setting('bound', 'Escape bound', 'number', function() {return this.bound;}.bind(this), function(x) {this.bound = x;}.bind(this),  Setting.map_to_float(), 0.1),
-                new Setting('iters', 'Max iterations', 'number', function() {return this.iters;}.bind(this), function(x) {this.iters = x;}.bind(this),  Setting.map_to_int(), 10)
+                new Setting('bound', 'Escape bound', 'number', () => this.bound, x => {this.bound = x;},  Setting.map_to_float, 0.1),
+                new Setting('iters', 'Max iterations', 'number', () => this.iters, x => {this.iters = x;},  Setting.map_to_int, 10)
             ];
         };
     }
