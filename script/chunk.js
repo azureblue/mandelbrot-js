@@ -1,7 +1,6 @@
 var chunk = (function () {
 
     var Rect = geom.Rect;
-    var Vec2 = geom.Vec2;
 
     function Chunk_Manager(renderer) {
 	this.renderer = renderer;

@@ -1,6 +1,6 @@
 (function (plane) {
+    
     var Vec2 = geom.Vec2;
-
     var Mandelbrot = rendering.Mandelbrot;
     var Chunk_Manager = chunk.Chunk_Manager;
     var Chunk_Rect = chunk.Chunk_Rect;
@@ -8,26 +8,20 @@
     var draw_canvas, stats_canvas, stats_bottom_canvas, overlay_canvas,
             draw_context, stats_context, stats_bottom_context, overlay_context;
 
-    var width, height;
+    var width, height, offset = new Vec2();
 
-    var offset = new Vec2(-400, -300);
-
-    var scalen = 33;
-
-    var
-            chunk_size = 200,
-            preview_freq = 20,
-            preview = undefined;
+    var chunk_size = 200, preview_freq = 20, scalen = 33, preview;
 
     var mouse_down_point, mouse_move_point;
 
     var chunk_queue = [];
+    
     var renderer = new Mandelbrot(300, 2, Math.pow(1.2, scalen));
     var chunk_manager = new Chunk_Manager(renderer);
 
-    var dragging = false,
-            draw = false;
-    var draw_async_timeout_handle;
+    var dragging = false, draw = false;
+    
+    var draw_async_timeout_handle, continous_drawing_timeout_handle;
 
     function Preview(data, width, height) {
         Vec2.call(this, 0, 0);
@@ -51,14 +45,16 @@
         return new Preview(new Uint8ClampedArray(context2d.getImageData(0, 0,
                 width, height).data), width, height);
     };
+    
+    function clean_chunk_queue() {
+        chunk_queue.length = 0;
+    }
 
     function redraw() {
         stop_drawing();
-        chunk_queue.length = 0;
-
+        clean_chunk_queue();
         draw_stats();
-
-        schedule_spirally();
+        schedule_spirally();        
         start_drawing();
     }
 
@@ -112,7 +108,6 @@
             for (var i = 0; i < delta; i++, current_pos.y -= 1)
                 sch_inner_chunk();
         }
-        
     }
 
     function schedule_chunk(x, y, w, h) {
@@ -168,14 +163,12 @@
         return setTimeout(action, 0);
     }
 
-    var cd_timeout = undefined;
-
     function countdown_continous_drawing() {
         stop_drawing();
-        if (cd_timeout) {
-            clearTimeout(cd_timeout);
+        if (continous_drawing_timeout_handle) {
+            clearTimeout(continous_drawing_timeout_handle);
         }
-        cd_timeout = setTimeout(redraw, 200);
+        continous_drawing_timeout_handle = setTimeout(redraw, 200);
     }
 
     function handle_mouse_down(event) {
@@ -218,7 +211,6 @@
         }
 
         mouse_move_point = temp_mouse_move_point;
-
     }
 
     function handle_mouse_wheel(event) {
@@ -229,11 +221,9 @@
     }
 
     plane.set_scale_n = function (nscale, xo, yo) {
-        if (typeof xo === 'undefined')
-            xo = offset.x + width / 2;
-        if (typeof yo === 'undefined')
-            yo = offset.y + height / 2;
-
+        xo = xo === undefined ? offset.x + width / 2 : xo;
+        yo = yo === undefined ? offset.y + height / 2 : yo;
+        
         newscale = Math.pow(1.2, nscale);
         offset.x += Math.round(xo * newscale / renderer.scale - xo);
         offset.y += Math.round(yo * newscale / renderer.scale - yo);
@@ -281,6 +271,7 @@
 
         overlay_context.strokeStyle = "rgba(0, 0, 200, 0.3)";
         overlay_context.lineWidth = 2;
+        
         overlay_context.beginPath();
         overlay_context.moveTo(width / 2, 20);
         overlay_context.lineTo(width / 2, height);

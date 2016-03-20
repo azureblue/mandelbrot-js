@@ -1,8 +1,8 @@
 geom = (function() {
     
     function Vec2(x, y) {
-	this.x = x;
-	this.y = y;
+	this.x = x === undefined ? 0 : x;
+	this.y = y === undefined ? 0 : y;
     };
 
     Vec2.prototype.vector_to = function(vec) {
