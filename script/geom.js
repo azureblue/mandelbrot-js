@@ -37,6 +37,15 @@ geom = (function() {
 
     Rect.prototype = Object.create(Vec2.prototype);
     
+    Rect.prototype.intersects = function(rect) {
+        if (rect.x + rect.width > this.x 
+            && rect.x < this.x + this.width
+            && rect.y + rect.height > this.y
+            && rect.y < this.y + this.height) 
+            return true;
+        return false;
+    };
+    
     return {
 	Vec2: Vec2,
 	Rect: Rect

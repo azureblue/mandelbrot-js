@@ -1,9 +1,11 @@
 (function (plane) {
     
     var Vec2 = geom.Vec2;
+    var Rect = geom.Rect;
+    var Setting = settings.Setting;
+    
     var Mandelbrot = rendering.Mandelbrot;
     var Chunk_Manager = chunk.Chunk_Manager;
-    var Chunk_Rect = chunk.Chunk_Rect;
 
     var draw_canvas, stats_canvas, stats_bottom_canvas, overlay_canvas,
             draw_context, stats_context, stats_bottom_context, overlay_context;
@@ -14,12 +16,16 @@
 
     var mouse_down_point, mouse_move_point;
 
-    var chunk_queue = [];
+    var chunk_queue = [], pre_rendering_chunk_queue = [] ;
     
     var renderer = new Mandelbrot(300, 2, Math.pow(1.2, scalen));
     var chunk_manager = new Chunk_Manager(renderer);
 
     var dragging = false, draw = false;
+    
+    var continous_drawing_timeout = 200;
+    
+    var outer_chunks_layers = 5;
     
     var draw_async_timeout_handle, continous_drawing_timeout_handle;
 
@@ -46,8 +52,25 @@
                 width, height).data), width, height);
     };
     
+    function Chunk_Request(screen_position, width, height, draw) {
+	Rect.call(this, screen_position.x, screen_position.y, width, height);
+	this.plane_rect = new Rect(plane_x(screen_position.x), plane_y(screen_position.y), width, height);
+        this.draw = draw;
+    }
+
+    Chunk_Request.prototype = Object.create(Rect.prototype);
+
+    function plane_x(screen_x) {
+        return screen_x + offset.x;
+    }
+    
+    function plane_y(screen_y) {
+        return -screen_y - offset.y;
+    }
+    
     function clean_chunk_queue() {
         chunk_queue.length = 0;
+        pre_rendering_chunk_queue.length = 0;
     }
 
     function redraw() {
@@ -90,6 +113,11 @@
                 chunks_left--;
             }
         };
+        
+        var sch_outer_chunk = function () {            
+                schedule_chunk_for_pre_rendering(-xalign + current_pos.x * chunk_size, -yalign +
+                    current_pos.y * chunk_size, chunk_size, chunk_size);            
+        };
 
         var delta = 0;
 
@@ -108,32 +136,69 @@
             for (var i = 0; i < delta; i++, current_pos.y -= 1)
                 sch_inner_chunk();
         }
+
+        for (var l = 1; l <= outer_chunks_layers; l++) {
+            current_pos = new Vec2(l * -1, l * -1);
+            var delta_x = width_in_chunks + l * 2 - 1;
+            var delta_y = height_in_chunks + l * 2 - 1;
+            for (var i =  0; i < delta_x; i++, current_pos.x += 1)
+                sch_outer_chunk();
+
+            for (var i = 0; i < delta_y; i++, current_pos.y += 1)
+                sch_outer_chunk();
+
+            for (var i = 0; i < delta_x; i++, current_pos.x -= 1)
+                sch_outer_chunk();
+
+            for (var i = 0; i < delta_y; i++, current_pos.y -= 1)
+                sch_outer_chunk();
+        }
+    }
+    
+    function check_chunk_alignment(x, y) {
+        if (((x + offset.x) % chunk_size !== 0) || ((-y - offset.y) % chunk_size !== 0)) 
+            console.warn("scheduling non-aligned chunk at: " + x + ":" + y + " - " + (x + offset.x) + ":" + (-y - offset.y));
     }
 
     function schedule_chunk(x, y, w, h) {
-        chunk_queue.push(new Chunk_Rect(new Vec2(x + offset.x, -y - offset.y),
-                new Vec2(x, y), w, h));
+        check_chunk_alignment(x, y);        
+        chunk_queue.push(new Chunk_Request(new Vec2(x, y), w, h, true));
+    }
+    
+    function schedule_chunk_for_pre_rendering(x, y, w, h) {
+       check_chunk_alignment(x, y);
+       pre_rendering_chunk_queue.push(new Chunk_Request(new Vec2(x, y), w, h, false));
+    }
+    
+    function next_chunk_request() {
+        if (chunk_queue.length > 0) 
+            return chunk_queue.shift();
+        
+        if (pre_rendering_chunk_queue.length > 0)
+            return pre_rendering_chunk_queue.shift();
+        
+        return undefined;
     }
 
     function draw_next_chunk() {
-        if (chunk_queue.length > 0 && draw) {
-            var chunkRect = chunk_queue.shift();
-            draw_chunk(chunkRect);
-
-            if (chunk_queue.length % preview_freq === 0)
-                preview = Preview.create_preview(draw_context, width, height);
-
-            draw_async_timeout_handle = async(function () {
-                draw_next_chunk();
-            });
-
-        } else {
-            if (chunk_queue.length === 0)
-                preview = Preview.create_preview(draw_context, width, height);
-
-            draw = false;
-        }
         draw_stats();
+        if (!draw) return;
+                
+        var chunk_request = next_chunk_request();
+        
+        if (chunk_request != null) {
+            var chunk = chunk_manager.get_chunk(chunk_request.plane_rect);
+            if (chunk_request.draw) {                
+                draw_chunk(chunk, chunk_request);               
+                if (chunk_queue.length % preview_freq === 0)
+                    preview = Preview.create_preview(draw_context, width, height);
+            } 
+            
+            draw_async_timeout_handle = async(() => draw_next_chunk()); 
+        }
+        else
+            draw = false;
+        
     }
 
     function stop_drawing() {
@@ -145,18 +210,14 @@
         if (!draw) {
             clearTimeout(draw_async_timeout_handle);
             draw = true;
-            draw_async_timeout_handle = async(function () {
-                draw_next_chunk();
-            });
+            draw_async_timeout_handle = async(() => draw_next_chunk());
         }
     }
 
-    function draw_chunk(chunkRect) {
-        var id = draw_context.createImageData(chunkRect.width, chunkRect.height);
-
-        var chunk = chunk_manager.get_chunk(chunkRect);
+    function draw_chunk(chunk, screen_position) {
+        var id = draw_context.createImageData(chunk.chunk_rect.width, chunk.chunk_rect.height);
         id.data.set(chunk.data);
-        draw_context.putImageData(id, chunkRect.screen_position.x, chunkRect.screen_position.y);
+        draw_context.putImageData(id, screen_position.x, screen_position.y);
     }
 
     function async(action) {
@@ -168,13 +229,17 @@
         if (continous_drawing_timeout_handle) {
             clearTimeout(continous_drawing_timeout_handle);
         }
-        continous_drawing_timeout_handle = setTimeout(redraw, 200);
+        continous_drawing_timeout_handle = setTimeout(redraw, continous_drawing_timeout);
     }
 
     function handle_mouse_down(event) {
-        if (event.button === 2)
+        if (event.button === 2) {
+            event.preventDefault();
+	    plane.pause();
+	    settings.open_settings_dialog(plane.start_drawing);	
             return;
-
+        }
+            
         stop_drawing();
         preview = Preview.create_preview(draw_context, width, height);
         mouse_down_point = Vec2.from_event(event);
@@ -299,8 +364,13 @@
 
 
         stats_bottom_context.clearRect(0, 0, 800, 25);
-        if (chunk_queue.length > 0 && draw) {
-            var text = "RENDERING: " + chunk_queue.length + " chunks to process";
+        if (!draw)
+            return ;
+        
+        if (chunk_queue.length + pre_rendering_chunk_queue.length > 0 ) {
+            var text = chunk_queue.length > 0 
+            ? "RENDERING: " + chunk_queue.length + " chunks to process"
+            : "PRE-RENDERING";
             var metrics = stats_bottom_context.measureText(text);
             var text_width = metrics.width;
             stats_bottom_context.fillStyle = "rgb(122, 122, 122)";
@@ -336,7 +406,24 @@
 
     plane.list_settings = function () {
         return [
-            new Setting('scale', 'Scale (1.2<sup>n</sup>)', 'number', plane.get_scale_n, plane.set_scale_n, Setting.map_to_int, 1)
+            new Setting('Scale (1.2<sup>n</sup>)', undefined, 'number', plane.get_scale_n, plane.set_scale_n, Setting.map_to_int, 1)
+        ];
+    };
+    
+    plane.list_advanced_settings = function () {
+        return [            
+            new Setting('Chunk size', undefined, 'number', () => chunk_size, 
+                x => {
+                    chunk_size = x;
+                    chunk_manager.clear(); 
+                    redraw();
+                },  Setting.map_to_int, 10, 50),
+            new Setting('Chunk cache size', undefined, 'number', () => chunk_manager.max_size, 
+                x => chunk_manager.max_size = x,  Setting.map_to_int, 10, 50),
+            new Setting('Draw while dragging timeout', undefined, 'number', () => continous_drawing_timeout, 
+                x => {continous_drawing_timeout = x;},  Setting.map_to_int, 10, 10),
+            new Setting('Preview frequency', undefined,  'number', () => preview_freq, 
+                x => {preview_frequecy = x;},  Setting.map_to_int, 10, 10),
         ];
     };
 

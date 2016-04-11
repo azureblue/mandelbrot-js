@@ -1,6 +1,7 @@
 (function (rendering) {
 
     var Chunk = chunk.Chunk;
+    var Setting = settings.Setting;
 
     function Mandelbrot(iters, bound, scale) {
         this.bound = bound;
@@ -58,9 +59,13 @@
         
         this.list_settings = function () {
             return [
-                new Setting('bound', 'Escape bound', 'number', () => this.bound, x => {this.bound = x;},  Setting.map_to_float, 0.1),
-                new Setting('iters', 'Max iterations', 'number', () => this.iters, x => {this.iters = x;},  Setting.map_to_int, 10)
+                new Setting('Escape bound', undefined, 'number', () => this.bound, x => {this.bound = x;},  Setting.map_to_float, 0.1),
+                new Setting('Max iterations', undefined, 'number', () => this.iters, x => {this.iters = x;},  Setting.map_to_int, 10)
             ];
+        };
+        
+        this.list_advanced_settings = function () {
+            return [];
         };
     }
 

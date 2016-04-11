@@ -1,8 +1,9 @@
-$(function () {
+var settings = (function (settings) {
     var renderers = plane.list_renderers();
     var renderer = renderers[0];
     
     var settings = [].concat(plane.list_settings(), renderer.list_settings());
+    var advanced_settings = [].concat(plane.list_advanced_settings(), renderer.list_advanced_settings());
 
     var create_form = function () {
         
@@ -13,17 +14,31 @@ $(function () {
                         <fieldset> \
                 <div id="setting-tabs"> \
                     <ul> \
-                      <li><a href="#settings-plane">Basic</a></li> \
-                      <li><a href="#settings-renderer">Advanced</a></li> \
+                      <li><a href="#settings-basic">Basic</a></li> \
+                      <li><a href="#settings-advanced">Advanced</a></li> \
                     </ul> ');
         
-         html.push('<div id="settings-plane">');
+         html.push('<div id="settings-basic">');
          for (var i = 0; i < settings.length; i++) {
-	    html.push("<label>" + settings[i].get_desc() + '</label>');
-	    html.push('<input type="number" name="' + settings[i].get_name() 
+	    html.push("<label>" + settings[i].get_name() + '</label>');
+	    html.push('<input type="number" name="setting_' + i 
                     + '" value="' + settings[i].get_setting() 
-                    + '" id="id_' + settings[i].get_name() 
+                    + '" id="setting_' + i 
+                    + (settings[i].get_min() === undefined ? '' : '" min="' + settings[i].get_min())
+                    + (settings[i].get_max() === undefined ? '' : '" max="' + settings[i].get_max())
                     + '" step="' + settings[i].get_step() 
+                    + '" class="text ui-widget-content ui-corner-all">');
+	}
+        html.push('</div>');
+        html.push('<div id="settings-advanced">');
+         for (var i = 0; i < advanced_settings.length; i++) {
+	    html.push("<label>" + advanced_settings[i].get_name() + '</label>');
+	    html.push('<input type="number" name="advanced_setting_' + i 
+                    + '" value="' + advanced_settings[i].get_setting() 
+                    + '" id="advanced_setting_' + i 
+                    + (advanced_settings[i].get_min() === undefined ? '' : '" min="' + advanced_settings[i].get_min())
+                    + (advanced_settings[i].get_max() === undefined ? '' : '" max="' + advanced_settings[i].get_max())
+                    + '" step="' + advanced_settings[i].get_step() 
                     + '" class="text ui-widget-content ui-corner-all">');
 	}
         html.push('</div>');
@@ -37,7 +52,7 @@ $(function () {
 	return html.join("");
     };
     
-    function create_dialog() {
+    function open_settings_dialog(close_callback) {
 	var dialog =  $(create_form(renderer)).dialog({
 	    autoOpen: false,
 	    height: 500,
@@ -46,17 +61,24 @@ $(function () {
 	    buttons: {
 		"Ok": function () {
 		    for (var i = 0; i < settings.length; i++) {
-			settings[i].set_setting($("#id_" + settings[i].get_name()).val());
+                        var val = $("#setting_" + i).val();
+                        if (settings[i].get_setting() == val) continue;
+			settings[i].set_setting(val);
+		    }
+                    
+                    for (var i = 0; i < advanced_settings.length; i++) {
+			var val = $("#advanced_setting_" + i).val();
+                        if (advanced_settings[i].get_setting() == val) continue;
+			advanced_settings[i].set_setting(val);
 		    }
 
 		    dialog.dialog("destroy");
-		    
-			//plane.redraw();
-		    
+                    close_callback();
 		},
+                
 		Cancel: function () {
-		    plane.start_drawing();
 		    dialog.dialog("destroy");
+		    close_callback();
 		}
 	    },
             open: function() {
@@ -64,18 +86,14 @@ $(function () {
             },
             
 	    close: function () {
-		plane.start_drawing();
 		dialog.dialog("destroy");
+		close_callback();
 	    }
 	});
-	return dialog;
+	dialog.dialog("open");
     }
-
-    $("#overlay_canvas").mousedown(function (e) {
-	e.preventDefault();
-	if (e.button === 2) {
-	    plane.pause();
-	    create_dialog().dialog("open");
-	}
-    });
-});
+    
+    settings.open_settings_dialog = open_settings_dialog;
+    
+    return settings;
+})(settings !== undefined ? settings : {});
